@@ -8,6 +8,9 @@ end
 if ~isfield(params, 'dt_hist')
     params.dt_hist = params.ihist * params.dt;
 end
+if ~isfield(params, 'eqname')
+    params.eqname = "VP";
+end
 
 % convert params:
 params.y            = params.v;
@@ -68,7 +71,8 @@ while (time < params.T_end)
 
     % advance fluid in time
     [fk, Efield] = RK3(params,time,dt,fk);
-
+    %[fk, Efield] = euler(params,time,dt,fk);
+    %[fk, Efield] = make_step(params,time,dt,fk);
     % update the time step
     time = time + dt;
 
@@ -109,43 +113,11 @@ while (time < params.T_end)
     % plot if time to do so
     if (mod(it,params.iplot)==0)
         clf;
-        f = cofitxy(fk);
-        subplot(2,4,1:2)
-        pc(params.X ,params.V ,f)
-        title("$f(x,v,t)$")
-        colorbar
-        subplot(2,4,3:4)
-        [U1,U2]=meshgrid(params.v_periodic, Efield);
-        imu = pcolor(params.X, params.V, sqrt(U1.^2 + U2.^2));
-        title("$f(x,v,t)$")
-        shading flat
-        imu.FaceColor = 'interp';
-        set(gca, 'YDir', 'normal');
-        hold on
-        delta_n = round(params.nx/20);
-        uqv = quiver(params.X(1:delta_n:end,1:delta_n:end), params.V(1:delta_n:end,1:delta_n:end), U1(1:delta_n:end,1:delta_n:end), U2(1:delta_n:end,1:delta_n:end), 'r');
-        subplot(2,4,5)
-        semilogy(params.time_log,params.dM_rel,'-+')
-        xlabel("time $t$")
-        title('dM')
-        subplot(2,4,6)
-        semilogy(params.time_log,params.dP_rel,':x')
-        title('dP')
-        xlabel("time $t$")
-        subplot(2,4,7)
-        semilogy(params.time_log,params.dE_rel,'--.')
-        title('dE')
-        xlabel("time $t$")
-        subplot(2,4,8)
-        semilogy(params.time_log,params.dL2_rel,'--.')
-        title('dL2norm')
-        xlabel("time $t$")
-        pause(0.0001)
-        %keyboard
-        %       c = caxis;
-        %colormap(PaletteMarieAll('Vorticity',600,0.3,50,0.3));
-        %farge_color();
-        shading interp
+        if params.eqname=="BGK"
+             plot_BGK(params,fk,Efield)
+        else
+             plot_VP(params,fk,Efield)
+        end
     end
 end
 params.freqs = rk;
@@ -197,6 +169,38 @@ fk_new = dealias(params, fk_new);
 end
 
 
+function [fk_new, Efield] = euler(params,time,dt,fk)
+
+% Compute non-linear terms at the beginning
+[nlk1, Efield] = nonlinear_vlasov(params, time, fk);
+
+% Calculate intermediate stage values
+k1 = dt * nlk1;
+
+fk_new = fk + k1;
+
+% Dealiasing
+fk_new = dealias(params, fk_new);
+end
+
+% advance fluid in time
+function   [fknew, Efield] = make_step(params,time,dt,fk)
+
+    tau = params.relaxation_time*0.5;
+    time_new = time + dt;
+    % advance fluid in time
+    Nsteps = 5;
+    
+    for n = 1:Nsteps
+        fkm = fk;
+    [fk, Efield] =euler(params,time,tau,fkm);
+    time = time + tau;
+    end
+    assert(time_new-time>0,"N*tau > dt")
+    fknew = fk + (time_new - time)*(fk-fkm)/tau;
+    fk_new = dealias(params, fk_new);
+end
+
 
 
 function [nlk, Efield]=nonlinear_vlasov(params,time,fk)
@@ -205,15 +209,33 @@ function [nlk, Efield]=nonlinear_vlasov(params,time,fk)
 % want to use higher order time stepping (maybe RK4) without
 % integrating factor
 
-phi_k = give_potential(params,cofitxy(fk));
-dphi_x =ifft(1i*params.kx'.*phi_k,'symmetric');
-Efield = - dphi_x;
+f = cofitxy(fk);
+
+% init source term
+ST = 0;
+if params.eqname == "BGK"
+        Efield = zeros(size(f,1),1);
+    dphi_x = Efield;
+
+    Rconst = params.ideal_gas_constant; % J *mol-1 K^-1 ideale gas constant
+    fm = calc_maxwellian_spectral(f,Rconst,params.V);
+
+    tau = params.relaxation_time;
+    ST = 1/tau * (fm- f); % source term
+else
+    phi_k = give_potential(params,f);
+    dphi_x =ifft(1i*params.kx'.*phi_k,'symmetric');
+    Efield = - dphi_x;
+end
+
 if params.v_periodic
     [u(:,:,1), u(:,:,2)] = meshgrid(params.v_periodic,dphi_x);
 else
     [u(:,:,1), u(:,:,2)] = meshgrid(params.v,dphi_x);
 end
-nlk = fft2(u(:,:,1).*cofitxy(1i*params.Kx.* fk) + u(:,:,2).*cofitxy(1i*params.Ky.*fk));
+
+
+nlk = fft2(u(:,:,1).*cofitxy(1i*params.Kx.* fk) + u(:,:,2).*cofitxy(1i*params.Ky.*fk) + ST);
 
 % delete aliased modes
 nlk = dealias(params,nlk);
