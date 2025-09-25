@@ -27,9 +27,9 @@ params.T_end        = 1000;
 params.dt0           = 0.25;
 params.dt_constant  = 0.25;
 params.iplot        = 100; % plot every iplot time steps
-params.ihist        = 100;
-params.ilog         = 10;
-params.dt_hist      = 1;
+%params.ihist        = 100;
+%params.ilog         = 10;
+params.dt_hist      = 100;
 params.dt_log       = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.bump_transition_width = 0.1*params.Lv;
