@@ -107,8 +107,8 @@ params.fhist_fine(:,:,1) =  f;
 
 clear xgf ygf f B
 
-evalVOp = @(BMList, sgsz) genVOp(params,f0, dom, mgsz, genKFOp(R), BMList, sgsz);
-evalVOp_plot = @(BMList, sgsz) genVOp(params,f0, dom, mgsz, genKFOp(RPlot), BMList, sgsz);
+evalVOp = @(BMList, sgsz, t) genVOp(params,f0, dom, mgsz, genKFOp(R), BMList, sgsz,t);
+evalVOp_plot = @(BMList, sgsz, t) genVOp(params,f0, dom, mgsz, genKFOp(RPlot), BMList, sgsz,t);
 
 
 % plotting grid also need to be periodic, if really want to plot periodic functions properly, wrap
@@ -132,14 +132,14 @@ nstep = 1;
 
 
 
-[u1h, u2h, f] = evalVOp({BMjet}, params.grid.plotting);
+[u1h, u2h, f] = evalVOp({BMjet}, params.grid.plotting,t);
 fh = fft2(f);
 u1 = ifft2(u1h, 'symmetric');
 u2 = ifft2(u2h, 'symmetric');
 
 
 
-[u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.sampling);
+[u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.sampling,t);
 params.time_log(1) = t;
 il = 1;
 [params.Mass(il),params.Momentum(il),params.Epot(il),params.Ekin(il),params.Etot(il),params.L2norm(il),~,~,params.Emodes(il,:)] = measure(f,Efield,params.grid.sampling);
@@ -149,7 +149,7 @@ params.dL2_rel(il) = abs(params.L2norm(il) - params.L2norm(1))/abs(params.L2norm
 params.nmaps(il) = nmaps;
 
 
-[u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.fine);
+[u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.fine,t);
 
 [Mf,Pf,~,~,Etotf,L2Normf] = measure(f,Efield,params.grid.fine);
 
@@ -197,7 +197,7 @@ while (norm(t-params.T_end)>1e-12)
     % evaluate the poisson equation to compute the velocities
     %---------------------------------------------------------
     tic();
-    [u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.sampling);
+    [u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.sampling, t);
     u1j = dataF2H(params,u1h, sgsz, vgsz);
     u2j = dataF2H(params,u2h, sgsz, vgsz);
 
@@ -249,7 +249,7 @@ while (norm(t-params.T_end)>1e-12)
     %%%%%%%%%%%%
     if (abs(t - (it_hist)*dt_hist)<1e-12)
         it_hist = it_hist + 1;
-        [u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.fine);
+        [u1h, u2h, f, XB, YB, JB, Efield] = evalVOp([BMList; {BMjet}], params.grid.fine, t);
         [params.rk,params.spectr_fft(it_hist,:)] = spectrum(f);
 
         params.time_hist(it_hist) = t;
@@ -262,7 +262,7 @@ while (norm(t-params.T_end)>1e-12)
     % LOGGING
     %%%%%%%%%%%%
     if (abs(t - (it_log)*dt_log)<1e-12 || abs(t - (it_hist)*dt_hist)<1e-12)
-        [~, ~, f, ~, ~, ~, Efield] = evalVOp([BMList; {BMjet}], params.grid.sampling);
+        [~, ~, f, ~, ~, ~, Efield] = evalVOp([BMList; {BMjet}], params.grid.sampling, t);
         it_log = it_log + 1;
         params.time_log(it_log) = t;
         [params.Mass(it_log),params.Momentum(it_log),params.Epot(it_log),params.Ekin(it_log),params.Etot(it_log),params.L2norm(it_log),~,~,params.Emodes(it_log,:)] = measure(f,Efield,params.grid.sampling);
@@ -289,7 +289,7 @@ while (norm(t-params.T_end)>1e-12)
     %%%%%%%%%%%%
     if (mod(il,params.iplot)==0)
         BMjet_t = HMapCompose(params, mgsz, BMjet, mgsz, bmjet);
-        [u1h, u2h, f, XB, YB, JB,Efield] = evalVOp_plot([BMList; {BMjet_t}], params.grid.plotting);
+        [u1h, u2h, f, XB, YB, JB,Efield] = evalVOp_plot([BMList; {BMjet_t}], params.grid.plotting, t);
 
         fh = fft2(f);
 
@@ -354,7 +354,7 @@ if (norm(t-params.T_end)>1e-12)
 end
 
 BMjet_t = HMapCompose(params, mgsz, BMjet, mgsz, bmjet);
-[u1h, u2h, f, XB, YB, JB,Efield] = evalVOp([BMList; {BMjet}], params.grid.fine);
+[u1h, u2h, f, XB, YB, JB,Efield] = evalVOp([BMList; {BMjet}], params.grid.fine,t);
 
 [Mf1,Pf1,~,~,Etotf1,L2Norm1] = measure(f,Efield,params.grid.fine);
 
@@ -371,7 +371,7 @@ save('-v7.3', dir +'/params.mat', 'params');
 
 end
 
-function [u1h, u2h, f, M1g, M2g, Jac, Efield] = genVOp(params,f0, dom, mgsz, deKFOp, BMList, grid)
+function [u1h, u2h, f, M1g, M2g, Jac, Efield] = genVOp(params,f0, dom, mgsz, deKFOp, BMList, grid, t)
 
 xgs = grid.Xgrid;
 vgs = grid.Vgrid;
@@ -383,8 +383,10 @@ f = f0(M1g, M2g);
 [dphi_xh,kx,kv] =vPoisson(f, deKFOp, grid.size, dom, grid.dv);
 v_periodic = grid.v_periodic;
 
-dphi_xh = dphi_xh + compute_external_Efield(params, params.grids(1).x, params.time + dt);
+
 dphi_x = reshape(ifft(dphi_xh,"symmetric"),1,[]);
+
+dphi_x = dphi_x; + compute_external_Efield(params, xgs(1,:), t)*0;
 [u2, u1] = meshgrid(dphi_x,v_periodic);
 
 u1h = fft2(-u1);

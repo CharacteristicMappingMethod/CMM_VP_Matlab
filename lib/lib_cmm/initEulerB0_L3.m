@@ -4,7 +4,7 @@ sgsz = samplinggrid.size;
 t = 0;
 dom = params.dom;
 
-[u1h, u2h, f, M1g, M2g, Jac] = evalVOp({BMjet}, samplinggrid);
+[u1h, u2h, f, M1g, M2g, Jac] = evalVOp({BMjet}, samplinggrid,t);
 
 
 u1j = dataF2H(params,u1h, sgsz, vgsz);
@@ -28,7 +28,7 @@ t = t+dt;
 
 
 % next step eval an improve the Euler step, update map
-[u1h, u2h, f, M1g, M2g, Jac] = evalVOp({BMjet_t}, samplinggrid);
+[u1h, u2h, f, M1g, M2g, Jac] = evalVOp({BMjet_t}, samplinggrid,t);
 
 u1j = dataF2H(params,u1h, sgsz, vgsz);
 u2j = dataF2H(params,u2h, sgsz, vgsz);
@@ -45,7 +45,7 @@ BMjet = HMapCompose(params, mgsz, BMjet, mgsz, bmjet);
 
 
 % update velocity again with new map and move to next step
-[u1h, u2h, f, M1g, M2g, Jac] = evalVOp({BMjet}, samplinggrid);
+[u1h, u2h, f, M1g, M2g, Jac] = evalVOp({BMjet}, samplinggrid,t);
 
 u1j = dataF2H(params, u1h, sgsz, vgsz);
 u2j = dataF2H(params, u2h, sgsz, vgsz);

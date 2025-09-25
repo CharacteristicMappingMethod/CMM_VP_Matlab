@@ -1,10 +1,10 @@
-n=2^5; % 4097
+n=2^8; % 4097
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Map settings
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.Nmap           = n; % grid dimension of the submaps n x n
 params.Nfine        =2^8; % grid for measuring and saves of f
-params.Nsampling    =2^7; % upsampling grid of veloctiy
+params.Nsampling    =2^9; % upsampling grid of veloctiy
 params.Nplotting    =1024; % plotting grid
 params.nv           = n;
 params.Lv           = 5*pi;
