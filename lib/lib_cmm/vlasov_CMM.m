@@ -383,7 +383,7 @@ f = f0(M1g, M2g);
 [dphi_xh,kx,kv] =vPoisson(f, deKFOp, grid.size, dom, grid.dv);
 v_periodic = grid.v_periodic;
 
-
+dphi_xh = dphi_xh + compute_external_Efield(params, params.grids(1).x, params.time + dt);
 dphi_x = reshape(ifft(dphi_xh,"symmetric"),1,[]);
 [u2, u1] = meshgrid(dphi_x,v_periodic);
 
